@@ -17,7 +17,11 @@ from ps1 import FourVector
 from ps1 import Matrix
 from ps1 import BoostMatrix
 from math import sqrt
-class Deuteron:
+import random
+from math import pi
+from math import cos
+from math import sin
+class Particle:
     """
     This Class represents the Particle data for protons, neutrons, anti-protons
     and anti-neutrons. 
@@ -35,6 +39,8 @@ class Deuteron:
         elif self.PID == -2212: self.name = 'Anti-Proton'
         elif self.PID == 2112: self.name = 'Neutron'
         elif self.PID == -2112: self.name = 'Anti-Neutron'
+        elif self.PID == 700201: self.name = 'Deuteron'
+
         
         
         
@@ -53,16 +59,18 @@ class Deuteron:
         return '(PARTICLE : {}, {}, MASS = {})'.format\
             (self.name, repr(self.fvector), self.m)
     
-class Event_Database:
+class Event_Data:
     
     def __init__(self):
         self.prev_event = 0
         self.m_d = 1.878 
+        self.m_pion = 0.1396
+        self.m_pion0 = 0.135
         # self.deu_mass = 
         
     
     def read_event(self, number):
-        data = open("deuteron.dat")
+        data = open("med.dat")
         event_number = 0
         event = []
         for line in data:
@@ -77,16 +85,17 @@ class Event_Database:
                         return event
                         # print(events)
                         # print('>>>')
-                        break
+                        # break
                         
             else:
                 if event_number == number:
                     List = line.split()
                     EP = FourVector(float(List[1]), float(List[2]), \
                                     float(List[3]), float(List[4]))
-                    particle = Deuteron(event_number+1, int(List[0]), EP, List[5])
+                    particle = Particle(event_number+1, int(List[0]), EP, List[5])
                     event.append(particle)
-                    self.prev_event = event_number 
+                    self.prev_event = event_number
+        data.close()
     
     def read_events(self, start, stop):
         self.prev_event = stop 
@@ -113,21 +122,88 @@ class Event_Database:
                     anti_pair.append(anti) 
         return [*p_pair, *anti_pair]
     
-    def k(self, pair):
-        proton = pair[0].fvector
-        neutron = pair[1].fvector
-        BM = BoostMatrix(proton+neutron)
+    @staticmethod
+    def k(pair):
+        proton, neutron = pair[0].fvector, pair[1].fvector
+        try: BM = BoostMatrix(proton+neutron)
+        except: BM = BoostMatrix(proton+neutron, 1.878)    
         # Create Boost Matrix for boosting a particle into the centre of mass
         # frame of the proton-neutron combination.
-        boost_p = BM*proton  # Boost the proton 
-        boost_n = BM*neutron # Boost the neutron
-        print(repr(boost_p+boost_n))
+        boost_p, boost_n = BM*proton, BM*neutron  # Boost the proton and neutron 
+        # print(repr(boost_p+boost_n))
         q = boost_p - boost_n # Calculate q
-        print(q)
+        # print(q)
         return sqrt(sum([q[i]*q[i] for i in range(1,4)]))
     
-    def 2_decay(self, pair):
-        fvector = 
+    def two_decay(self, pair, product):
+        # Create proton and neutron Four Vectors.
+        p, n = pair[0].fvector, pair[1].fvector 
+        # Determine decay products masses.
+        m2 = self.m_d
+        if product == 'photon': m1 = 0
+        elif product == 'pion+' or product == 'pion-': m1 = self.m_pion
+        elif product == 'pion0': m1 = self.m_pion0       
+        # print(m1)   
+        try: BM = BoostMatrix(p+n) # Create Boost Matrix for boosting a particle 
+        except: BM = BoostMatrix(p+n, 1.878)# into the centre of mass frame of the proton-neutron combination.
+        
+        boost_p, boost_n = BM*p, BM*n  # Boost the proton and neutron.
+        fvector = boost_p + boost_n # Create FourVector of boosted combination.
+        M = fvector[0] # Define centre of mass energy.
+        # print(M)
+        # Calculate the magnitude of both product's momenta.
+        mag_p = sqrt(((M**2 - (m1 + m2)**2))*(M**2 - (m1 - m2)**2))/(2*M)
+        # print(mag_p)
+        # Generate random phi and theta values.
+        theta, phi = random.uniform(0, pi), random.uniform(0, 2*pi)
+        # Calculate energy components of each product Four Vector.
+        E1, E2 = (M**2 - m2**2 + m1**2)/(2*M), (M**2 - m1**2 + m2**2)/(2*M)
+        # Calculate momentum components of each product Four Vector.
+        P1 = FourVector(E1, -mag_p*sin(phi)*cos(theta),\
+                        -mag_p*sin(phi)*sin(theta), -mag_p*cos(phi))
+        P2 = FourVector(E2, mag_p*sin(phi)*cos(theta),\
+                        mag_p*sin(phi)*sin(theta), mag_p*cos(phi))
+        try: BM = BoostMatrix(~(p+n))
+        except: BM = BoostMatrix(~(p+n), 1.878)
+        P1, P2 = BM*P1, BM*P2
+        # print(sqrt(P1[1]**2 + P1[2]**2 + P1[3]**2))
+        return [P1, P2]
+    
+def coalescence():
+    a = Event_Data()
+    deuterons = []
+    for i in range(1,80000):
+        combinations = a.combination(i)
+        if combinations == []: pass
+        else:
+            for i in combinations:
+                k = a.k(i)
+                if k < 0.058:
+                    decay = a.two_decay(i, 'photon')
+                    deuterons.append(decay[1])
+    return deuterons
+        
+f = open("coal_deuterons.dat", "w+")
+for i in range(10):
+     f.write("This is line %d\r\n" % (i+1))               
+        
+        
+    
+
+    
+    
+    
+if __name__== "__main__":
+    a = Event_Data()
+    pair = a.combination(2)[0]
+    f = open("coal_deuterons.dat", "w+")
+    for i in range(10):
+         f.write("This is line %d\r\n" % (i+1)) 
+    f.close()
+    
+        
+        
+        
         
         
         
