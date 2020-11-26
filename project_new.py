@@ -21,7 +21,9 @@ import random
 from math import pi
 from math import cos
 from math import sin
+from math import exp
 import random
+from scipy import optimize
 class Particle:
     """
     This Class represents the Particle data for protons, neutrons, anti-protons,
@@ -292,6 +294,110 @@ class Event_Data:
         prod1, prod2, prod3 = rev_BM*prod1, rev_BM*prod2, rev_BM*prod3
         
         return [prod1, prod2, Particle(self.event_number, d_PID, prod3, self.m_d)]
+    
+class cross_sec:
+    """
+    This class defines methods for calculating the cross sections for processes
+    in the Dal Raklev algorithm in micro barns
+    """
+    def __init__(self):
+        self.m_pion = 0.1396
+        
+    def pp_two_body(self, q, neg=True):
+        a, b, c, d, e = 170, 1.34, 1.77, 0.38, 0.096 # Define best fit value parameters
+        n = q / self.m_pion
+        if neg == False:
+            return (a * n**b)/((c - exp(d*n))**2 + e)
+        if neg == True:
+            return -1*(a * n**b)/((c - exp(d*n))**2 + e)
+    
+    def nn_two_body(self, q, neg=True):
+        a, b, c, d, e = 170, 1.34, 1.77, 0.38, 0.096 # Define best fit value parameters
+        n = q / self.m_pion
+        if neg == False:
+            return (a * n**b)/((c - exp(d*n))**2 + e)
+        if neg == True:
+            return -1*(a * n**b)/((c - exp(d*n))**2 + e)
+    
+    def pn_two_body(self, q, neg=True):
+        a, b, c, d, e = 170, 1.34, 1.77, 0.38, 0.096 # Define best fit value parameters
+        n = q / self.m_pion
+        if neg == False:
+            return (a * n**b)/(2 * ((c - exp(d*n))**2 + e))
+        if neg == True:
+            return -1*(a * n**b)/(2 * ((c - exp(d*n))**2 + e))
+    
+    def pp_three_body(self, k, neg=True):
+        a, b, c, d, e = 5.099E+15, 16.56, 2.333E+7, 13.33, 2.868E+16
+        if neg == False:
+            return (a * k**b)/((c - exp(d*k))**2 + e)
+        if neg == True:
+            return -1*(a * k**b)/((c - exp(d*k))**2 + e)
+    
+    def nn_three_body(self, k, neg=True):
+        a, b, c, d, e = 5.099E+15, 16.56, 2.333E+7, 13.33, 2.868E+16
+        if neg == False:
+            return (a * k**b)/((c - exp(d*k))**2 + e)
+        if neg == True:
+            return -1*(a * k**b)/((c - exp(d*k))**2 + e)
+    
+    def pn_three_body_0(self, k, neg=True):
+        a, b, c, d, e = 2.855E+6, 13.11, 2.961E+3, 5.572, 1.461E+6
+        if neg == False:
+            return (a * k**b)/((c - exp(d*k))**2 + e)
+        if neg == True:
+            return -1*(a * k**b)/((c - exp(d*k))**2 + e)
+    
+    def pn_three_body_1(self, k, neg=True):
+        """
+        Takes argument k and returns cross section for a given k.
+        For process "p + n -> d" and its conjugate process
+        """
+        a1, b1, c1, d1, e1 = 6.465E+6, 10.51, 1.979E+3, 5.363, 6.045E+5
+        a2, b2, c2, d2, e2 = 2.549E+15, 16.57, 2.33E+7, 11.19, 2.868E+16
+        
+        frac1 = (a1 * k**b1)/((c1 - exp(d1*k))**2 + e1)
+        frac2 = (a2 * k**b2)/((c2 - exp(d2*k))**2 + e2)
+        if neg == False:
+            return frac1 + frac2
+        if neg == True:
+            return -1*(frac1 + frac2)
+    
+    def pn_photon(self, k, neg=True):
+        """
+        Takes argument k and returns cross section for a given k.
+        For process "p + n -> photon + d" and its conjugate process 
+        """
+        coef = [2.30346, -93.66346, 2.565390E+3, -2.5594101E+4, 1.43513109E+5, \
+                -5.0357289E+5, 1.14924802E+6, -1.72368391E+6, 1.67934876E+6, \
+                   -1.01988855E+6, 3.4984035E+5, -5.1662760E+4]
+        b1, b2 = -5.1885, 2.9196
+        
+        if k < 1.28:
+            summed = coef[0]*(k**-1) + coef[1]*(k**0) + coef[2]*(k**1) + \
+                    coef[3]*(k**2) + coef[4]*(k**3) + coef[5]*(k**4) + coef[6]*(k**5) \
+                     + coef[7]*(k**6) + coef[8]*(k**7) + coef[9]*(k**8) + coef[10]*(k**9) \
+                     + coef[11]*(k**10)
+            if neg == False:
+                return summed
+            if neg == True:
+                return -1*summed
+                
+        elif k >= 1.28:
+            if neg == False:
+                return exp(-b1*k - b2*k**2)
+            if neg == True:
+                return -1*exp(-b1*k - b2*k**2)
+        
+
+
+    
+        
+    
+    
+        
+        
+    
         
     
 def coalescence():
@@ -378,14 +484,60 @@ def dal_rak():
                         if event[i].fvector != event[j].fvector:
                             anti = [event[i], event[j]]
                             anti_pair.append(anti)
+                            
             combinations = [*p_pair, *anti_pair] # Create list of all possible combinations
             p_pair, anti_pair = [], [] # Set lists back to empty for next event
             event = [] # Set event list back to empty for next event
+            
+            
             if combinations == []: pass # Ignore events which do not give any combinations
             else:
                 for i in combinations: # Calculate k for each combination
                     k = a.k(i)
                     
+                    # FOR PP COMBINATION
+                    if (i[0].name == 'Proton' and i[1].name == 'Proton') or \
+                        (i[0].name == 'Anti-Proton' and i[1].name == 'Anti-Proton'):
+                        
+                        # Two body decay channel is checked
+                        q = a.two_decay(i, 'Pion+')[0]
+                        sigma_two_body = cross_sec().pp_two_body(q, False)
+                        k_max2 = 
+                        
+                        # Three body decay channel is checked
+                        sigma_three_body = cross_sec().pp_three_body(k, False)
+                        ###### Need to add sigma_max ######
+                    
+                    # FOR NN COMBINATION
+                    if (i[0].name == 'Neutron' and i[1].name == 'Neutron') or \
+                        (i[0].name == 'Anti-Neutron' and i[1].name == 'Anti-Neutron'):
+                        
+                        # Two body decay channel is checked
+                        q = a.two_decay(i, 'Pion-')[0]
+                        sigma_two_body = cross_sec().nn_two_body(q, False)
+                        
+                        # Three body decay channel is checked
+                        sigma_three_body = cross_sec().nn_three_body(k, False)
+                    
+                    # FOR PN COMBINATION
+                    if (i[0].name == 'Proton' and i[1].name == 'Neutron') or \
+                        (i[0].name == 'Anti-Proton' and i[1].name == 'Anti-Neutron')\
+                            or (i[0].name == 'Neutron' and i[1].name == 'Proton') or \
+                        (i[0].name == 'Anti-Neutron' and i[1].name == 'Anti-Proton'):
+                            
+                        # Two body decay channels are checked
+                        q = a.two_decay(i, 'Pion0')
+                        sigma_two_body = cross_sec().pn_two_body(q, False)
+                        sigma_photon = cross_sec().pn_photon(k, False)
+                        
+                        # Three body decay channels are checked
+                        sigma_three_body0 = cross_sec().pn_three_body_0(k, False)
+                        sigma_three_body1 = cross_sec().pn_three_body_1(k, False)
+                
+                 
+                    
+                        
+                        
         # Now extract particle data for all other lines               
         else:
 
