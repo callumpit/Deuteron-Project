@@ -491,6 +491,40 @@ def dal_rak():
     data = open("short.dat") # Read in the event data.
     a.event_number = 0 # Set event number equal to zero
     event = [] # Create empty list for each event
+    
+    # Calculate maximum cross-section for each process
+    # p + p -> pion + d
+    pp_q_max2 = optimize.fmin(cross_sec().pp_two_body, 0.5)[0]
+    pp_xs_two_body_max = cross_sec().pp_two_body(pp_q_max2, False)
+    
+    # p + p -> pion + pion0 + d
+    pp_k_max3 = optimize.fmin(cross_sec().pp_three_body, 0.5)[0]
+    pp_xs_three_body_max = cross_sec().pp_three_body(pp_k_max3, False)
+    
+    # n + n -> pion + d
+    nn_q_max2 = optimize.fmin(cross_sec().nn_two_body, 0.5)[0]
+    nn_xs_two_body_max = cross_sec().nn_two_body(nn_q_max2, False)
+    
+    # n + n -> pion + pion0 + d
+    nn_k_max3 = optimize.fmin(cross_sec().nn_three_body, 0.5)[0]
+    nn_xs_three_body_max = cross_sec().nn_three_body(nn_k_max3, False)
+    
+    # p + n -> pion0 + d
+    pn_q_max2 = optimize.fmin(cross_sec().pn_two_body, 0.5)[0]
+    pn_xs_two_body_max = cross_sec().pn_two_body(pn_q_max2, False)
+    
+    # p + n -> photon + d
+    pn_k_max_photon = optimize.fmin(cross_sec().pn_photon, 0.5)[0]
+    pn_xs_photon_max = cross_sec().pn_photon(pn_k_max_photon, False)
+    
+    # p + n -> pion + pion + d
+    pn_k_max0 = optimize.fmin(cross_sec().pn_three_body_0, 0.5)[0]
+    pn_xs_three_body0_max = cross_sec().pn_three_body_0(pn_k_max0, False)
+    
+    # p + n -> pion0 + pion0 + d
+    pn_k_max1 = optimize.fmin(cross_sec().pn_three_body_1, 0.5)
+    pn_xs_three_body1_max = cross_sec().pn_three_body_1(pn_k_max1, False)
+    
     for line in data:
         line.strip() # Remove whitespace in each line
         if line.startswith("#"): # Ignore first line 
@@ -536,9 +570,7 @@ def dal_rak():
                             vec = a.two_decay(i, 'Pion')[0]
                             q = vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3]
                             xs_two_body = cross_sec().pp_two_body(q, False)
-                            q_max2 = optimize.fmin(cross_sec().pp_two_body, 0.5)[0]
-                            xs_two_body_max = cross_sec().pp_two_body(q_max2, False)
-                            xs_rand = random.random() * xs_two_body_max
+                            xs_rand = random.random() * pp_xs_two_body_max
                             if xs_rand < xs_two_body: selects.append('two_body')
                         except ValueError:
                             pass
@@ -547,9 +579,7 @@ def dal_rak():
                         try:
                             vec3 = a.three_decay(i, 'Pion', 'Pion0')[2]
                             xs_three_body = cross_sec().pp_three_body(k, False)
-                            k_max3 = optimize.fmin(cross_sec().pp_three_body, 0.5)[0]
-                            xs_three_body_max = cross_sec().pp_three_body(k_max3, False)
-                            xs_rand = random.random() * xs_three_body_max
+                            xs_rand = random.random() * pp_xs_three_body_max
                             if xs_rand < xs_three_body: selects.append('three_body')
                         except ValueError:
                             pass
@@ -579,9 +609,7 @@ def dal_rak():
                             vec = a.two_decay(i, 'Pion')[0]
                             q = vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3]
                             xs_two_body = cross_sec().nn_two_body(q, False)
-                            q_max2 = optimize.fmin(cross_sec().nn_two_body, 0.5)[0]
-                            xs_two_body_max = cross_sec().nn_two_body(q_max2, False)
-                            xs_rand = random.random() * xs_two_body_max
+                            xs_rand = random.random() * nn_xs_two_body_max
                             if xs_rand < xs_two_body: selects.append('two_body')
                         except ValueError:
                             pass
@@ -590,9 +618,7 @@ def dal_rak():
                         try:
                             vec3 = a.three_decay(i, 'Pion', 'Pion0')[2]
                             xs_three_body = cross_sec().nn_three_body(k, False)
-                            k_max3 = optimize.fmin(cross_sec().nn_three_body, 0.5)[0]
-                            xs_three_body_max = cross_sec().nn_three_body(k_max3, False)
-                            xs_rand = random.random() * xs_three_body_max
+                            xs_rand = random.random() * nn_xs_three_body_max
                             if xs_rand < xs_three_body: selects.append('three_body')
                         except ValueError:
                             pass
@@ -624,10 +650,8 @@ def dal_rak():
                         try:
                             vec = a.two_decay(i, 'Pion0')[0]
                             q = vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3]
-                            xs_two_body = cross_sec().pn_two_body(q, False)
-                            q_max2 = optimize.fmin(cross_sec().pn_two_body, 0.5)[0]
-                            xs_two_body_max = cross_sec().pn_two_body(q_max2, False)
-                            xs_two_body_rand = random.random() * xs_two_body_max
+                            xs_two_body = cross_sec().pn_two_body(q, False)                           
+                            xs_two_body_rand = random.random() * pn_xs_two_body_max
                             if xs_two_body_rand < xs_two_body: selects.append('two_body')
                         except ValueError:
                             pass
@@ -635,10 +659,8 @@ def dal_rak():
                         # Now the photon production channel.
                         try:
                             vec_photon = a.two_decay(i, 'Photon')[1]
-                            xs_photon = cross_sec().pn_photon(k, False)
-                            k_max_photon = optimize.fmin(cross_sec().pn_photon, 0.5)[0]
-                            xs_photon_max = cross_sec().pn_photon(k_max_photon, False)
-                            xs_photon_rand = random.random() * xs_photon_max
+                            xs_photon = cross_sec().pn_photon(k, False)                            
+                            xs_photon_rand = random.random() * pn_xs_photon_max
                             if xs_photon_rand < xs_photon: selects.append('photon')
                         except ValueError:
                             pass
@@ -647,10 +669,8 @@ def dal_rak():
                         # First the Pion0 channel.
                         try:
                             vec30 = a.three_decay(i, 'Pion0', 'Pion0')[2]
-                            xs_three_body0 = cross_sec().pn_three_body_0(k, False)
-                            k_max0 = optimize.fmin(cross_sec().pn_three_body_0, 0.5)[0]
-                            xs_three_body0_max = cross_sec().pn_three_body_0(k_max0, False)
-                            xs_three_body0_rand = random.random() * xs_three_body0_max
+                            xs_three_body0 = cross_sec().pn_three_body_0(k, False)                            
+                            xs_three_body0_rand = random.random() * pn_xs_three_body0_max
                             if xs_three_body0_rand < xs_three_body0: selects.append('three_body0')
                         except ValueError:
                             pass
@@ -658,9 +678,7 @@ def dal_rak():
                         try:
                             vec31 = a.three_decay(i, 'Pion', 'Pion')[2]   
                             xs_three_body1 = cross_sec().pn_three_body_1(k, False)
-                            k_max1 = optimize.fmin(cross_sec().pn_three_body_1, 0.5)
-                            xs_three_body1_max = cross_sec().pn_three_body_1(k_max1, False)
-                            xs_three_body1_rand = random.random() * xs_three_body1_max
+                            xs_three_body1_rand = random.random() * pn_xs_three_body1_max
                             if xs_three_body1_rand < xs_three_body1: selects.append('three_body1')
                         except ValueError:
                             pass
