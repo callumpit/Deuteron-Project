@@ -175,23 +175,25 @@ class Event_Data:
         arguments and returns particle data for both products boosted back into
         the lab frame.
         """
-        # Create proton and neutron Four Vectors.
-        p, n = pair[0].fvector, pair[1].fvector 
+        # Determine combined mass of p1 and p2
+        m = pair[0].m + pair[1].m
+        
+        # Create particle Four Vectors.
+        p1, p2 = pair[0].fvector, pair[1].fvector 
         # Determine decay products and masses.
         m2 = self.m_d
         if product == 'Photon': m1 = 0
-        elif product == 'Pion+' or product == 'Pion-': m1 = self.m_pion
+        elif product == 'Pion': m1 = self.m_pion
         elif product == 'Pion0': m1 = self.m_pion0
-        if pair[0].name == 'Proton': d_PID = 700201
-        if pair[0].name == 'Anti-Proton': d_PID = -700201
+        if pair[0].PID > 0: d_PID = 700201
+        if pair[0].PID < 0: d_PID = -700201
+        try: BM = BoostMatrix(p1+p2) # Create Boost Matrix for boosting a particle 
+        except: BM = BoostMatrix(p1+p2, m)# into the centre of mass frame of the particle combination.
         
-        try: BM = BoostMatrix(p+n) # Create Boost Matrix for boosting a particle 
-        except: BM = BoostMatrix(p+n, 1.878)# into the centre of mass frame of the proton-neutron combination.
-        
-        boost_p, boost_n = BM*p, BM*n  # Boost the proton and neutron.
-        fvector = boost_p + boost_n # Create FourVector of boosted combination.
+        boost_p1, boost_p2 = BM*p1, BM*p2  # Boost the particles into COM.
+        fvector = boost_p1 + boost_p2 # Create FourVector of boosted combination.
         M = fvector[0] # Define centre of mass energy.
-        # print(M)
+        
         # Calculate the magnitude of both product's momenta.
         mag_p = sqrt(((M**2 - (m1 + m2)**2))*(M**2 - (m1 - m2)**2))/(2*M)
         # print(mag_p)
@@ -204,8 +206,8 @@ class Event_Data:
                         -mag_p*sin(phi)*sin(theta), -mag_p*cos(phi))
         P2 = FourVector(E2, mag_p*sin(phi)*cos(theta),\
                         mag_p*sin(phi)*sin(theta), mag_p*cos(phi))
-        try: BM = BoostMatrix(~(p+n))
-        except: BM = BoostMatrix(~(p+n), 1.878)
+        try: BM = BoostMatrix(~(p1+p2))
+        except: BM = BoostMatrix(~(p1+p2), m)
         P1, P2 = BM*P1, BM*P2
         # print(sqrt(P1[1]**2 + P1[2]**2 + P1[3]**2))
         return [P1, Particle(self.event_number, d_PID, P2, self.m_d)]
@@ -217,14 +219,15 @@ class Event_Data:
         frame.
         """
         # Determine deuteron type
-        if pair[0].name == 'Proton' or pair[0] == 'Neutron': d_PID = 700201
-        if pair[0].name == 'Anti-Proton' or pair[0] == 'Anti-Neutron': d_PID = -700201
+        if pair[0].PID > 0: d_PID = 700201
+        if pair[0].PID < 0: d_PID = -700201
         
         # Determine combined mass of combination
-        if pair[0].name == 'Proton' and pair[1].name == 'Proton': M=1.876
-        if pair[0].name == 'Neutron' and pair[1].name == 'Neutron': M=1.88
-        if pair[0].name == 'Proton' and pair[1].name == 'Neutron': M=1.878
-        if pair[0].name == 'Neutron' and pair[1].name == 'Proton': M=1.876
+        # if pair[0].name == 'Proton' and pair[1].name == 'Proton': M=1.876
+        # if pair[0].name == 'Neutron' and pair[1].name == 'Neutron': M=1.88
+        # if pair[0].name == 'Proton' and pair[1].name == 'Neutron': M=1.878
+        # if pair[0].name == 'Neutron' and pair[1].name == 'Proton': M=1.876
+        M = pair[0].m + pair[1].m
         
         # Calculate combined FourVector of particle pair
         p01, p02 = pair[0].fvector, pair[1].fvector
@@ -243,20 +246,20 @@ class Event_Data:
         
         # Determine masses of products
         m3 = self.m_d
-        if product1 == 'Pion+' or product1 == 'Pion-': m1 = self.m_pion
+        if product1 == 'Pion': m1 = self.m_pion
         elif product1 == 'Pion0': m1 = self.m_pion0
-        if product2 == 'Pion+' or product2 == 'Pion-': m2 = self.m_pion
+        if product2 == 'Pion': m2 = self.m_pion
         elif product2 == 'Pion0': m2 = self.m_pion0
         mSum = m1 + m2 + m3
         mDiff = m0 - mSum # Mass difference between COM energy and product masses
         
         # Calculate maximum momenta for first and intermediate decay products.
         m23Min = m2 + m3
-        m23Max = m0 - m1
-        p1Max = 0.5 * sqrt( (m0 - m1 - m23Min) * (m0 + m1 + m23Min) * \
-                (m0 + m1 - m23Min) * (m0 - m1 + m23Min)) / m0
-        p23Max  = 0.5 * sqrt( (m23Max - m2 - m3) * (m23Max + m2 + m3) * \
-                 (m23Max + m2 - m3) * (m23Max - m2 + m3) ) / m23Max
+        # m23Max = m0 - m1
+        # p1Max = 0.5 * sqrt( (m0 - m1 - m23Min) * (m0 + m1 + m23Min) * \
+        #         (m0 + m1 - m23Min) * (m0 - m1 + m23Min)) / m0
+        # p23Max  = 0.5 * sqrt( (m23Max - m2 - m3) * (m23Max + m2 + m3) * \
+        #          (m23Max + m2 - m3) * (m23Max - m2 + m3) ) / m23Max
         
         # Choose intermediate mass randomly in allowed range
         m23 = m23Min + random.random() * mDiff
@@ -288,7 +291,7 @@ class Event_Data:
         py              = p1Abs * sinTheta * sin(phi)  # Determine momentum components
         pz              = p1Abs * cosTheta
         E1 = sqrt(m1*m1 + p1Abs*p1Abs) # Determine energy of products
-        E23 = sqrt(m23*m23 + p23Abs*p23Abs)
+        # E23 = sqrt(m23*m23 + p23Abs*p23Abs)
         prod1 = FourVector(E1, px, py, pz) # product 1 FourVector
         # Boost back into lab frame
         prod1, prod2, prod3 = rev_BM*prod1, rev_BM*prod2, rev_BM*prod3
@@ -304,64 +307,92 @@ class cross_sec:
         self.m_pion = 0.1396
         
     def pp_two_body(self, q, neg=True):
+        q = float('%.8g' % q)
         a, b, c, d, e = 170, 1.34, 1.77, 0.38, 0.096 # Define best fit value parameters
         n = q / self.m_pion
-        if neg == False:
-            return (a * n**b)/((c - exp(d*n))**2 + e)
-        if neg == True:
-            return -1*(a * n**b)/((c - exp(d*n))**2 + e)
+        try:
+            if neg == False:
+                return float('%.8g' % ((a * n**b)/((c - exp(d*n))**2 + e)))
+            if neg == True:
+                return -1*float('%.8g' % ((a * n**b)/((c - exp(d*n))**2 + e)))
+        except: 
+            return 0
     
     def nn_two_body(self, q, neg=True):
+        q = float('%.8g' % q)
         a, b, c, d, e = 170, 1.34, 1.77, 0.38, 0.096 # Define best fit value parameters
         n = q / self.m_pion
-        if neg == False:
-            return (a * n**b)/((c - exp(d*n))**2 + e)
-        if neg == True:
-            return -1*(a * n**b)/((c - exp(d*n))**2 + e)
+        try:
+            if neg == False:
+                return float('%.8g' % ((a * n**b)/((c - exp(d*n))**2 + e)))
+            if neg == True:
+                return -1*float('%.8g' % ((a * n**b)/((c - exp(d*n))**2 + e)))
+        except:
+            return 0
     
     def pn_two_body(self, q, neg=True):
+        q = float('%.8g' % q)
         a, b, c, d, e = 170, 1.34, 1.77, 0.38, 0.096 # Define best fit value parameters
         n = q / self.m_pion
-        if neg == False:
-            return (a * n**b)/(2 * ((c - exp(d*n))**2 + e))
-        if neg == True:
-            return -1*(a * n**b)/(2 * ((c - exp(d*n))**2 + e))
+        try:
+            if neg == False:
+                return float('%.8g' % ((a * n**b)/(2 * ((c - exp(d*n))**2 + e))))
+            if neg == True:
+                return -1*float('%.8g' % ((a * n**b)/(2 * ((c - exp(d*n))**2 + e))))
+        except:
+            return 0
     
     def pp_three_body(self, k, neg=True):
+        k = float('%.8g' % k)
         a, b, c, d, e = 5.099E+15, 16.56, 2.333E+7, 13.33, 2.868E+16
-        if neg == False:
-            return (a * k**b)/((c - exp(d*k))**2 + e)
-        if neg == True:
-            return -1*(a * k**b)/((c - exp(d*k))**2 + e)
+        try:
+            if neg == False:
+                return float('%.8g' % ((a * k**b)/((c - exp(d*k))**2 + e)))
+            if neg == True:
+                return -1*float('%.8g' % ((a * k**b)/((c - exp(d*k))**2 + e)))
+        except:
+            return 0
     
     def nn_three_body(self, k, neg=True):
+        k = float('%.8g' % k)
         a, b, c, d, e = 5.099E+15, 16.56, 2.333E+7, 13.33, 2.868E+16
-        if neg == False:
-            return (a * k**b)/((c - exp(d*k))**2 + e)
-        if neg == True:
-            return -1*(a * k**b)/((c - exp(d*k))**2 + e)
+        try:
+            if neg == False:
+                return float('%.8g' % ((a * k**b)/((c - exp(d*k))**2 + e)))
+            if neg == True:
+                return -1*float('%.8g' % ((a * k**b)/((c - exp(d*k))**2 + e)))
+        except:
+            return 0
     
     def pn_three_body_0(self, k, neg=True):
+        k = float('%.8g' % k)
         a, b, c, d, e = 2.855E+6, 13.11, 2.961E+3, 5.572, 1.461E+6
-        if neg == False:
-            return (a * k**b)/((c - exp(d*k))**2 + e)
-        if neg == True:
-            return -1*(a * k**b)/((c - exp(d*k))**2 + e)
+        try:
+            if neg == False:
+                return float('%.8g' % ((a * k**b)/((c - exp(d*k))**2 + e)))
+            if neg == True:
+                return -1*float('%.8g' % ((a * k**b)/((c - exp(d*k))**2 + e)))
+        except:
+            return 0
     
     def pn_three_body_1(self, k, neg=True):
         """
         Takes argument k and returns cross section for a given k.
         For process "p + n -> d" and its conjugate process
         """
+        k = float('%.8g' % k)
         a1, b1, c1, d1, e1 = 6.465E+6, 10.51, 1.979E+3, 5.363, 6.045E+5
         a2, b2, c2, d2, e2 = 2.549E+15, 16.57, 2.33E+7, 11.19, 2.868E+16
         
-        frac1 = (a1 * k**b1)/((c1 - exp(d1*k))**2 + e1)
-        frac2 = (a2 * k**b2)/((c2 - exp(d2*k))**2 + e2)
-        if neg == False:
-            return frac1 + frac2
-        if neg == True:
-            return -1*(frac1 + frac2)
+        try:
+            frac1 = float('%.8g' % ((a1 * k**b1)/((c1 - exp(d1*k))**2 + e1)))
+            frac2 = float('%.8g' % ((a2 * k**b2)/((c2 - exp(d2*k))**2 + e2)))
+            if neg == False:
+                return frac1 + frac2
+            if neg == True:
+                return -1*(frac1 + frac2)
+        except:
+            return 0
     
     def pn_photon(self, k, neg=True):
         """
@@ -372,22 +403,22 @@ class cross_sec:
                 -5.0357289E+5, 1.14924802E+6, -1.72368391E+6, 1.67934876E+6, \
                    -1.01988855E+6, 3.4984035E+5, -5.1662760E+4]
         b1, b2 = -5.1885, 2.9196
-        
+        k = float('%.8g' % k)
         if k < 1.28:
             summed = coef[0]*(k**-1) + coef[1]*(k**0) + coef[2]*(k**1) + \
                     coef[3]*(k**2) + coef[4]*(k**3) + coef[5]*(k**4) + coef[6]*(k**5) \
                      + coef[7]*(k**6) + coef[8]*(k**7) + coef[9]*(k**8) + coef[10]*(k**9) \
                      + coef[11]*(k**10)
             if neg == False:
-                return summed
+                return summed*1E-6
             if neg == True:
-                return -1*summed
+                return -1*summed*1E-6
                 
         elif k >= 1.28:
             if neg == False:
-                return exp(-b1*k - b2*k**2)
+                return exp(-b1*k - b2*k**2)*1E-6
             if neg == True:
-                return -1*exp(-b1*k - b2*k**2)
+                return -1*exp(-b1*k - b2*k**2)*1E-6
         
 
 
@@ -411,6 +442,7 @@ def coalescence():
     data = open("deuteron.dat") # Read in the event data.
     a.event_number = 0 # Set event number equal to zero
     event = [] # Create empty list for each event
+    xs_0 = 3.47E+5 # in micro barns. 
     for line in data:
         line.strip() # Remove whitespace in each line
         if line.startswith("#"): # Ignore first line 
@@ -456,7 +488,7 @@ def coalescence():
 def dal_rak():
     deuterons = [] # Create an empty list for deuterons and anti-deuterons.
     a = Event_Data() # Create instance of event data class.
-    data = open("deuteron.dat") # Read in the event data.
+    data = open("short.dat") # Read in the event data.
     a.event_number = 0 # Set event number equal to zero
     event = [] # Create empty list for each event
     for line in data:
@@ -465,7 +497,7 @@ def dal_rak():
             pass
         elif line == "\n": # For empty lines
             a.event_number += 1 # Each empty line means a new event follows
-            
+            print('---------------------EVENT NUMBER {} -----------------'.format(a.event_number))
             # Now determine all possible particle combinations.
             # Using slightly edited version of combination algorithm from 
             # Event_data class.
@@ -498,46 +530,167 @@ def dal_rak():
                     # FOR PP COMBINATION
                     if (i[0].name == 'Proton' and i[1].name == 'Proton') or \
                         (i[0].name == 'Anti-Proton' and i[1].name == 'Anti-Proton'):
-                        
+                        selects = []
                         # Two body decay channel is checked
-                        q = a.two_decay(i, 'Pion+')[0]
-                        sigma_two_body = cross_sec().pp_two_body(q, False)
-                        k_max2 = 
+                        try:
+                            vec = a.two_decay(i, 'Pion')[0]
+                            q = vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3]
+                            xs_two_body = cross_sec().pp_two_body(q, False)
+                            q_max2 = optimize.fmin(cross_sec().pp_two_body, 0.5)[0]
+                            xs_two_body_max = cross_sec().pp_two_body(q_max2, False)
+                            xs_rand = random.random() * xs_two_body_max
+                            if xs_rand < xs_two_body: selects.append('two_body')
+                        except ValueError:
+                            pass
                         
                         # Three body decay channel is checked
-                        sigma_three_body = cross_sec().pp_three_body(k, False)
-                        ###### Need to add sigma_max ######
-                    
+                        try:
+                            vec3 = a.three_decay(i, 'Pion', 'Pion0')[2]
+                            xs_three_body = cross_sec().pp_three_body(k, False)
+                            k_max3 = optimize.fmin(cross_sec().pp_three_body, 0.5)[0]
+                            xs_three_body_max = cross_sec().pp_three_body(k_max3, False)
+                            xs_rand = random.random() * xs_three_body_max
+                            if xs_rand < xs_three_body: selects.append('three_body')
+                        except ValueError:
+                            pass
+                        
+                        # Check number of channels selected and perform decay
+                        if len(selects) == 0: pass
+                        if len(selects) == 1 and selects[0] == 'two_body':
+                            deuterons.append(a.two_decay(i, 'Pion')[1])
+                        if len(selects) == 1 and selects[0] == 'three_body':
+                            deuterons.append(vec3)
+                        if len(selects) == 2:
+                            norm_fac = xs_two_body + xs_three_body
+                            xs_two_body /= norm_fac
+                            xs_three_body /= norm_fac
+                            choice = random.choices(population=['two_body', 'three_body'],\
+                            weights=[xs_two_body, xs_three_body], k=1)
+                            if choice == 'two_body': deuterons.append(a.two_decay(i, 'Pion')[1])   
+                            if choice == 'three_body': deuterons.append(vec3)
+                            
+                            
                     # FOR NN COMBINATION
                     if (i[0].name == 'Neutron' and i[1].name == 'Neutron') or \
                         (i[0].name == 'Anti-Neutron' and i[1].name == 'Anti-Neutron'):
-                        
+                        selects = []
                         # Two body decay channel is checked
-                        q = a.two_decay(i, 'Pion-')[0]
-                        sigma_two_body = cross_sec().nn_two_body(q, False)
+                        try:
+                            vec = a.two_decay(i, 'Pion')[0]
+                            q = vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3]
+                            xs_two_body = cross_sec().nn_two_body(q, False)
+                            q_max2 = optimize.fmin(cross_sec().nn_two_body, 0.5)[0]
+                            xs_two_body_max = cross_sec().nn_two_body(q_max2, False)
+                            xs_rand = random.random() * xs_two_body_max
+                            if xs_rand < xs_two_body: selects.append('two_body')
+                        except ValueError:
+                            pass
                         
                         # Three body decay channel is checked
-                        sigma_three_body = cross_sec().nn_three_body(k, False)
+                        try:
+                            vec3 = a.three_decay(i, 'Pion', 'Pion0')[2]
+                            xs_three_body = cross_sec().nn_three_body(k, False)
+                            k_max3 = optimize.fmin(cross_sec().nn_three_body, 0.5)[0]
+                            xs_three_body_max = cross_sec().nn_three_body(k_max3, False)
+                            xs_rand = random.random() * xs_three_body_max
+                            if xs_rand < xs_three_body: selects.append('three_body')
+                        except ValueError:
+                            pass
+                        
+                        # Check number of channels selected and perform decay
+                        if len(selects) == 0: pass
+                        if len(selects) == 1 and selects[0] == 'two_body':
+                            deuterons.append(a.two_decay(i, 'Pion')[1])
+                        if len(selects) == 1 and selects[0] == 'three_body':
+                            deuterons.append(vec3)
+                        if len(selects) == 2:
+                            norm_fac = xs_two_body + xs_three_body
+                            xs_two_body /= norm_fac
+                            xs_three_body /= norm_fac
+                            choice = random.choices(population=['two_body', 'three_body'],\
+                            weights=[xs_two_body, xs_three_body], k=1)
+                            if choice == 'two_body': deuterons.append(a.two_decay(i, 'Pion')[1])   
+                            if choice == 'three_body': deuterons.append(vec3)
                     
                     # FOR PN COMBINATION
                     if (i[0].name == 'Proton' and i[1].name == 'Neutron') or \
                         (i[0].name == 'Anti-Proton' and i[1].name == 'Anti-Neutron')\
                             or (i[0].name == 'Neutron' and i[1].name == 'Proton') or \
                         (i[0].name == 'Anti-Neutron' and i[1].name == 'Anti-Proton'):
+                        selects = []
                             
-                        # Two body decay channels are checked
-                        q = a.two_decay(i, 'Pion0')
-                        sigma_two_body = cross_sec().pn_two_body(q, False)
-                        sigma_photon = cross_sec().pn_photon(k, False)
+                        # Two body decay channels are checked.                        
+                        # First the Pion two body channel.
+                        try:
+                            vec = a.two_decay(i, 'Pion0')[0]
+                            q = vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3]
+                            xs_two_body = cross_sec().pn_two_body(q, False)
+                            q_max2 = optimize.fmin(cross_sec().pn_two_body, 0.5)[0]
+                            xs_two_body_max = cross_sec().pn_two_body(q_max2, False)
+                            xs_two_body_rand = random.random() * xs_two_body_max
+                            if xs_two_body_rand < xs_two_body: selects.append('two_body')
+                        except ValueError:
+                            pass
                         
-                        # Three body decay channels are checked
-                        sigma_three_body0 = cross_sec().pn_three_body_0(k, False)
-                        sigma_three_body1 = cross_sec().pn_three_body_1(k, False)
-                
-                 
-                    
+                        # Now the photon production channel.
+                        try:
+                            vec_photon = a.two_decay(i, 'Photon')[1]
+                            xs_photon = cross_sec().pn_photon(k, False)
+                            k_max_photon = optimize.fmin(cross_sec().pn_photon, 0.5)[0]
+                            xs_photon_max = cross_sec().pn_photon(k_max_photon, False)
+                            xs_photon_rand = random.random() * xs_photon_max
+                            if xs_photon_rand < xs_photon: selects.append('photon')
+                        except ValueError:
+                            pass
                         
-                        
+                        # Three body decay channels are checked.
+                        # First the Pion0 channel.
+                        try:
+                            vec30 = a.three_decay(i, 'Pion0', 'Pion0')[2]
+                            xs_three_body0 = cross_sec().pn_three_body_0(k, False)
+                            k_max0 = optimize.fmin(cross_sec().pn_three_body_0, 0.5)[0]
+                            xs_three_body0_max = cross_sec().pn_three_body_0(k_max0, False)
+                            xs_three_body0_rand = random.random() * xs_three_body0_max
+                            if xs_three_body0_rand < xs_three_body0: selects.append('three_body0')
+                        except ValueError:
+                            pass
+                        # Now the Pion channel.
+                        try:
+                            vec31 = a.three_decay(i, 'Pion', 'Pion')[2]   
+                            xs_three_body1 = cross_sec().pn_three_body_1(k, False)
+                            k_max1 = optimize.fmin(cross_sec().pn_three_body_1, 0.5)
+                            xs_three_body1_max = cross_sec().pn_three_body_1(k_max1, False)
+                            xs_three_body1_rand = random.random() * xs_three_body1_max
+                            if xs_three_body1_rand < xs_three_body1: selects.append('three_body1')
+                        except ValueError:
+                            pass
+                        # Check number of channels selected and perform decay
+                        if len(selects) == 0: pass
+                        if len(selects) == 1 and selects[0] == 'two_body':
+                            deuterons.append(a.two_decay(i, 'Pion0')[1])
+                        if len(selects) == 1 and selects[0] == 'photon':
+                            deuterons.append(vec_photon)
+                        if len(selects) == 1 and selects[0] == 'three_body0':
+                            deuterons.append(vec30)
+                        if len(selects) == 1 and selects[0] == 'three_body1':
+                            deuterons.append(vec31)
+                        if len(selects) > 1 and len(selects) < 5:
+                            w = []
+                            for i in selects:
+                                if i == 'two_body': w.append(xs_two_body)
+                                if i == 'photon': w.append(xs_photon)
+                                if i == 'three_body0': w.append(xs_three_body0)
+                                if i == 'three_body1': w.append(xs_three_body1)
+                            norm_fac = sum([i for i in w])
+                            for i in range(0,len(w)): w[i] /= norm_fac
+                            choice = random.choices(population=selects, weights=w, k=1)
+                            if choice == 'two_body': deuterons.append(a.two_decay(i, 'Pion0')[1])
+                            if choice == 'photon': deuterons.append(vec_photon)
+                            if choice == 'three_body0':
+                                deuterons.append(vec30)
+                            if choice == 'three_body1':
+                                deuterons.append(vec31)
+                            
         # Now extract particle data for all other lines               
         else:
 
@@ -603,7 +756,7 @@ def dal_rak():
     
 if __name__== "__main__":
     a = Event_Data()
-    pair = a.combination(2)[0]
+    # pair = a.combination(2)[0]
     # f = open("coal_deuterons.dat", "w+")
     # for i in range(10):
     #      f.write("This is line %d\r\n" % (i+1)) 
