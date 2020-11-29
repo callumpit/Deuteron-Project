@@ -17,7 +17,6 @@ from ps1 import FourVector
 from ps1 import Matrix
 from ps1 import BoostMatrix
 from math import sqrt
-import random
 from math import pi
 from math import cos
 from math import sin
@@ -208,7 +207,8 @@ class Event_Data:
                         mag_p*sin(phi)*sin(theta), mag_p*cos(phi))
         try: BM = BoostMatrix(~(p1+p2))
         except: BM = BoostMatrix(~(p1+p2), m)
-        P1, P2 = BM*P1, BM*P2
+        # P1, P2 = BM*P1, BM*P2  # This line has been changed for the dal_raklev method
+        P2 = BM*P2
         # print(sqrt(P1[1]**2 + P1[2]**2 + P1[3]**2))
         return [P1, Particle(self.event_number, d_PID, P2, self.m_d)]
     
@@ -331,6 +331,13 @@ class cross_sec:
             return 0
     
     def pn_two_body(self, q, neg=True):
+        """
+        Takes argument q and returns corresponding cross-section for process
+        "p + n -> pion0 + pion0 + d" and conjugate process.
+        neg argument returns negative of the function if True. Default neg 
+        argument is set to True in order to calculate maximum cross section
+        using 'scipy.optimize.fmin' .
+        """
         q = float('%.8g' % q)
         a, b, c, d, e = 170, 1.34, 1.77, 0.38, 0.096 # Define best fit value parameters
         n = q / self.m_pion
@@ -343,6 +350,13 @@ class cross_sec:
             return 0
     
     def pp_three_body(self, k, neg=True):
+        """
+        Takes argument k and returns corresponding cross-section for process
+        "p + p -> pion + pion0 + d" and conjugate process.
+        neg argument returns negative of the function if True. Default neg 
+        argument is set to True in order to calculate maximum cross section
+        using 'scipy.optimize.fmin' .
+        """
         k = float('%.8g' % k)
         a, b, c, d, e = 5.099E+15, 16.56, 2.333E+7, 13.33, 2.868E+16
         try:
@@ -354,6 +368,13 @@ class cross_sec:
             return 0
     
     def nn_three_body(self, k, neg=True):
+        """
+        Takes argument k and returns corresponding cross-section for process
+        "n + n -> pion + pion0 + d" and conjugate process.
+        neg argument returns negative of the function if True. Default neg 
+        argument is set to True in order to calculate maximum cross section
+        using 'scipy.optimize.fmin' .
+        """
         k = float('%.8g' % k)
         a, b, c, d, e = 5.099E+15, 16.56, 2.333E+7, 13.33, 2.868E+16
         try:
@@ -365,6 +386,13 @@ class cross_sec:
             return 0
     
     def pn_three_body_0(self, k, neg=True):
+        """
+        Takes argument k and returns corresponding cross-section for process
+        "p + n -> pion0 + pion0 + d" and conjugate process.
+        neg argument returns negative of the function if True. Default neg 
+        argument is set to True in order to calculate maximum cross section
+        using 'scipy.optimize.fmin' .
+        """
         k = float('%.8g' % k)
         a, b, c, d, e = 2.855E+6, 13.11, 2.961E+3, 5.572, 1.461E+6
         try:
@@ -378,7 +406,10 @@ class cross_sec:
     def pn_three_body_1(self, k, neg=True):
         """
         Takes argument k and returns cross section for a given k.
-        For process "p + n -> d" and its conjugate process
+        For process "p + n -> pion + pion + d" and its conjugate process.
+        neg argument returns negative of the function if True. Default neg 
+        argument is set to True in order to calculate maximum cross section
+        using 'scipy.optimize.fmin' .
         """
         k = float('%.8g' % k)
         a1, b1, c1, d1, e1 = 6.465E+6, 10.51, 1.979E+3, 5.363, 6.045E+5
@@ -396,8 +427,21 @@ class cross_sec:
     
     def pn_photon(self, k, neg=True):
         """
-        Takes argument k and returns cross section for a given k.
-        For process "p + n -> photon + d" and its conjugate process 
+        Parameters
+        ----------
+        k : Float
+            Momentum difference particle pair
+        neg : Boolean
+            DESCRIPTION. The default is True.
+
+        Returns
+        -------
+        TYPE: Float
+            Takes argument k and returns cross section for a given k.
+            For process "p + n -> photon + d" and its conjugate process.
+            neg argument returns negative of the function if True. Default neg 
+            argument is set to True in order to calculate maximum cross section
+            using 'scipy.optimize.fmin' .
         """
         coef = [2.30346, -93.66346, 2.565390E+3, -2.5594101E+4, 1.43513109E+5, \
                 -5.0357289E+5, 1.14924802E+6, -1.72368391E+6, 1.67934876E+6, \
@@ -420,29 +464,24 @@ class cross_sec:
             if neg == True:
                 return -1*exp(-b1*k - b2*k**2)*1E-6
         
-
-
-    
-        
-    
-    
-        
-        
-    
-        
     
 def coalescence():
     """
-    This method implements the coalescence model using functions defined in
-    the particle data class. Returns a list of particle data for all 
-    deuterons and anti-deuterons produced by the events in "deuteron.dat".
+    This function implements the coalescence model.
+
+    Returns
+    -------
+    deuterons : List
+        This list contains all deuterons produced from events simulated using
+        the coalescence model.
+
     """
     deuterons = [] # Create an empty list for deuterons and anti-deuterons.
     a = Event_Data() # Create instance of event data class.
-    data = open("deuteron.dat") # Read in the event data.
+    data = open("short.dat") # Read in the event data.
     a.event_number = 0 # Set event number equal to zero
     event = [] # Create empty list for each event
-    xs_0 = 3.47E+5 # in micro barns. 
+
     for line in data:
         line.strip() # Remove whitespace in each line
         if line.startswith("#"): # Ignore first line 
@@ -452,8 +491,8 @@ def coalescence():
             
             # Use slightly edited version of combination algorithm from Event_data class.
             p_pair, anti_pair = [], [] # Create list for particle pairs and anti-particle pairs
-            for i in range(1, len(event)): # Create all possible p-n and anti combinations
-                for j in range(1, len(event)):
+            for i in range(0, len(event)): # Create all possible p-n and anti combinations
+                for j in range(0, len(event)):
                     if event[i].name=='Proton' and event[j].name=='Neutron': 
                         pair = [event[i], event[j]] # Recognises p-n combinations
                         p_pair.append(pair) # Add to list
@@ -464,6 +503,7 @@ def coalescence():
             combinations = [*p_pair, *anti_pair] # Create list of all possible combinations
             p_pair, anti_pair = [], [] # Set lists back to empty for next event
             event = [] # Set event list back to empty for next event
+            
             if combinations == []: pass # Ignore events which do not give any combinations
             else:
                 for i in combinations: # Calculate k for each combination
@@ -486,13 +526,23 @@ def coalescence():
 
     
 def dal_rak():
+    """
+    This function implements the Dal-Raklev model.
+
+    Returns
+    -------
+    deuterons : List
+        This list contains all deuterons and anti-deuterons produced in all
+        events simulated using the Dal-Raklev model.
+
+    """
     deuterons = [] # Create an empty list for deuterons and anti-deuterons.
     a = Event_Data() # Create instance of event data class.
     data = open("short.dat") # Read in the event data.
     a.event_number = 0 # Set event number equal to zero
     event = [] # Create empty list for each event
     
-    # Calculate maximum cross-section for each process
+    # Calculate maximum cross-section for each possible process
     # p + p -> pion + d
     pp_q_max2 = optimize.fmin(cross_sec().pp_two_body, 0.5)[0]
     pp_xs_two_body_max = cross_sec().pp_two_body(pp_q_max2, False)
@@ -520,7 +570,6 @@ def dal_rak():
     # p + n -> pion + pion + d
     pn_k_max0 = optimize.fmin(cross_sec().pn_three_body_0, 0.5)[0]
     pn_xs_three_body0_max = cross_sec().pn_three_body_0(pn_k_max0, False)
-    
     # p + n -> pion0 + pion0 + d
     pn_k_max1 = optimize.fmin(cross_sec().pn_three_body_1, 0.5)
     pn_xs_three_body1_max = cross_sec().pn_three_body_1(pn_k_max1, False)
@@ -531,31 +580,35 @@ def dal_rak():
             pass
         elif line == "\n": # For empty lines
             a.event_number += 1 # Each empty line means a new event follows
-            print('---------------------EVENT NUMBER {} -----------------'.format(a.event_number))
-            # Now determine all possible particle combinations.
-            # Using slightly edited version of combination algorithm from 
-            # Event_data class.
+            print('---------------------EVENT NUMBER {} -----------------'.format(a.event_number-1))
+            
+            # Now determine all possible particle combinations
+            # using slightly edited version of combination algorithm from 
+            # event_data class.
             p_pair, anti_pair = [], [] # Create list for particle pairs and anti-particle pairs
-            for i in range(1, len(event)): # Create all possible p-n and anti combinations
-                for j in range(1, len(event)):
+            for i in event: # Create all possible p-n and anti combinations
+                for j in event:
                     
-                    # Create all non anti combinations.
-                    if event[i].PID > 0 and event[j].PID > 0:
-                        if event[i].fvector != event[j].fvector:
-                            pair = [event[i], event[j]]
+                    # Create all normal combinations.
+                    if i.PID > 0 and j.PID > 0:
+                        if i.fvector != j.fvector:
+                            pair = [i, j]
                             p_pair.append(pair)
                     
                     # Create all anti combinations
-                    if event[i].PID < 0 and event[j].PID < 0:
-                        if event[i].fvector != event[j].fvector:
-                            anti = [event[i], event[j]]
+                    if i.PID < 0 and j.PID < 0:
+                        if i.fvector != j.fvector:
+                            anti = [i, j]
                             anti_pair.append(anti)
-                            
+                          
             combinations = [*p_pair, *anti_pair] # Create list of all possible combinations
             p_pair, anti_pair = [], [] # Set lists back to empty for next event
             event = [] # Set event list back to empty for next event
-            
-            
+            # Remove identical combinations due to double counting
+            for i in combinations:
+                for j in combinations:
+                    if i == [j[1], j[0]]:
+                        combinations.remove(j)
             if combinations == []: pass # Ignore events which do not give any combinations
             else:
                 for i in combinations: # Calculate k for each combination
@@ -565,10 +618,11 @@ def dal_rak():
                     if (i[0].name == 'Proton' and i[1].name == 'Proton') or \
                         (i[0].name == 'Anti-Proton' and i[1].name == 'Anti-Proton'):
                         selects = []
+                        # print(i)
                         # Two body decay channel is checked
                         try:
                             vec = a.two_decay(i, 'Pion')[0]
-                            q = vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3]
+                            q = sqrt(vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3])
                             xs_two_body = cross_sec().pp_two_body(q, False)
                             xs_rand = random.random() * pp_xs_two_body_max
                             if xs_rand < xs_two_body: selects.append('two_body')
@@ -604,13 +658,17 @@ def dal_rak():
                     if (i[0].name == 'Neutron' and i[1].name == 'Neutron') or \
                         (i[0].name == 'Anti-Neutron' and i[1].name == 'Anti-Neutron'):
                         selects = []
+                        
+                        # print(combinations)
                         # Two body decay channel is checked
                         try:
                             vec = a.two_decay(i, 'Pion')[0]
-                            q = vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3]
+                            q = sqrt(vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3])
                             xs_two_body = cross_sec().nn_two_body(q, False)
                             xs_rand = random.random() * nn_xs_two_body_max
-                            if xs_rand < xs_two_body: selects.append('two_body')
+                            if xs_rand < xs_two_body: 
+                                selects.append('two_body')
+                                # print('NN">>>>>>>>>>>>>>>>')
                         except ValueError:
                             pass
                         
@@ -619,7 +677,9 @@ def dal_rak():
                             vec3 = a.three_decay(i, 'Pion', 'Pion0')[2]
                             xs_three_body = cross_sec().nn_three_body(k, False)
                             xs_rand = random.random() * nn_xs_three_body_max
-                            if xs_rand < xs_three_body: selects.append('three_body')
+                            if xs_rand < xs_three_body:
+                                selects.append('three_body')
+                                # print('NN3>>>>>>>>>>>>>>>')
                         except ValueError:
                             pass
                         
@@ -637,6 +697,7 @@ def dal_rak():
                             weights=[xs_two_body, xs_three_body], k=1)
                             if choice == 'two_body': deuterons.append(a.two_decay(i, 'Pion')[1])   
                             if choice == 'three_body': deuterons.append(vec3)
+                            # print('choice>>>>>>>>>{}'.format(choice))
                     
                     # FOR PN COMBINATION
                     if (i[0].name == 'Proton' and i[1].name == 'Neutron') or \
@@ -644,12 +705,13 @@ def dal_rak():
                             or (i[0].name == 'Neutron' and i[1].name == 'Proton') or \
                         (i[0].name == 'Anti-Neutron' and i[1].name == 'Anti-Proton'):
                         selects = []
+                        # print(i)
                             
                         # Two body decay channels are checked.                        
                         # First the Pion two body channel.
                         try:
                             vec = a.two_decay(i, 'Pion0')[0]
-                            q = vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3]
+                            q = sqrt(vec[1]*vec[1] + vec[2]*vec[2] + vec[3]*vec[3])
                             xs_two_body = cross_sec().pn_two_body(q, False)                           
                             xs_two_body_rand = random.random() * pn_xs_two_body_max
                             if xs_two_body_rand < xs_two_body: selects.append('two_body')
@@ -708,7 +770,7 @@ def dal_rak():
                                 deuterons.append(vec30)
                             if choice == 'three_body1':
                                 deuterons.append(vec31)
-                            
+                            print('choice>>>>>>>>>{}'.format(choice))
         # Now extract particle data for all other lines               
         else:
 
@@ -723,59 +785,21 @@ def dal_rak():
     
     
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    # a = Event_Data()
-    # deuterons = []
-    # for i in range(1,80000):
-    #     combinations = a.combination(i)
-    #     if combinations == []: pass
-    #     else:
-    #         for i in combinations:
-    #             k = a.k(i)
-    #             if k < 0.058:
-    #                 decay = a.two_decay(i, 'photon')
-    #                 deuterons.append(decay[1])
-    # return deuterons
-
-
-
-
-
-
-
-
-
-
-
-        
-# f = open("coal_deuterons.dat", "w+")
-# for i in range(10):
-#      f.write("This is line %d\r\n" % (i+1))               
-        
-        
-    
-
-    
-    
-    
 if __name__== "__main__":
+    from datetime import datetime
+    start_time = datetime.now()
+    dr = dal_rak()
+    end_time = datetime.now()
+    print('Duration: {}'.format(end_time - start_time))
     a = Event_Data()
-    # pair = a.combination(2)[0]
-    # f = open("coal_deuterons.dat", "w+")
-    # for i in range(10):
-    #      f.write("This is line %d\r\n" % (i+1)) 
-    # f.close()
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
